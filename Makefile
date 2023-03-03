@@ -1,5 +1,5 @@
 all:
-	python3 main.py 127.0.0.1 8989
+	python3 main.py
 
 build_asm:
 	nasm -f elf64 -o build/tmp.o main.asm && ld build/tmp.o -o build/reverse_shell
@@ -12,3 +12,6 @@ build_test:
 
 clean:
 	rm build/*
+
+tester:
+	python3 tester.py

