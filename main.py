@@ -242,7 +242,7 @@ class Shellcode:
         # Gen random between '//bin/sh' and '/bin//sh'
         rd_index = randrange(2)
         #self.__code += MOV["rbx"] + SHELL[rd_index]
-        self.__code += MOV["rbx"] + SHELL[0]
+        self.__code += MOV["rbx"] + SHELL[1]
 
         # Filename
         self.__code += PUSH["rax"]
