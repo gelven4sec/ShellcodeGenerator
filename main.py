@@ -367,7 +367,7 @@ def main():
 
 
         case "2":
-            source = input("Enter file to drop on host (ex: ~/.ssh/id_ed25519.pub) : ")
+            source = input("Enter file to drop on host (ex: /home/user0/.ssh/id_ed25519.pub) : ")
             destination = input("Enter where to drop on target (ex: /root/.ssh/authorized_keys) : ")
 
             with open(source, "r") as f:
