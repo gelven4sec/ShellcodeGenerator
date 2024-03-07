@@ -29,3 +29,7 @@ if "\\x66\\x68\\x23\\x1d" in shellcode:
     print(bcolors.FAIL + "Hey, i know this port" + bcolors.ENDC)
 else:
     print(bcolors.OKGREEN + "No classical port detected" + bcolors.ENDC)
+if "\\x0F\\x05" in shellcode:
+    print(bcolors.FAIL + "Did you try to syscall ?" + bcolors.ENDC)
+else
+    print(bcolors.OKGREEN + "No syscall detected" + bcolors.ENDC)
